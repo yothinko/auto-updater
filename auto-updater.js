@@ -1,12 +1,9 @@
-var fs = require('fs'),
-
-  util = require('util'),
-  path = require('path').posix,
-
-  http = require('http'),
-  https = require('https'),
-
-  EventEmitter = require('events').EventEmitter;
+var fs = require('fs');
+var util = require('util');
+var path = require('path').posix;
+var http = require('http');
+var https = require('https');
+var EventEmitter = require('events').EventEmitter;
 
 var _ = require('underscore'),
   Defer = require('node-promise').defer;
@@ -15,7 +12,7 @@ var _ = require('underscore'),
  * @class AutoUpdater
  * @extends event-emitter
  */
-var AutoUpdater = function(config) {
+var AutoUpdater = function (config) {
   EventEmitter.apply(this);
 
   this.attrs = _.extend({}, AutoUpdater.defaults, config);
@@ -135,7 +132,7 @@ AutoUpdater.defaults = {
    * @type {Number}
    * @default 0
    */
-  progressDebounce: 0
+  progressDebounce: 0,
 };
 
 /**
@@ -144,7 +141,7 @@ AutoUpdater.defaults = {
  * @param  {Object} options Custom options
  * @chainable
  */
-AutoUpdater.prototype.use = function(options) {
+AutoUpdater.prototype.use = function (options) {
   _.extend(this.attrs, options);
   return this;
 };
@@ -154,7 +151,7 @@ AutoUpdater.prototype.use = function(options) {
  * @method fire
  * @param  {String} command Name of command
  */
-AutoUpdater.prototype.fire = function(command) {
+AutoUpdater.prototype.fire = function (command) {
   return commands[command].apply(this, _.toArray(arguments).slice(1));
 };
 
@@ -167,7 +164,7 @@ AutoUpdater.prototype.fire = function(command) {
  * @param  {Exception} e       Error object
  * @private
  */
-AutoUpdater.prototype.error = function(message, code, e) {
+AutoUpdater.prototype.error = function (message, code, e) {
   if (this.attrs.devmode) {
     console.error(message);
   }
@@ -190,15 +187,13 @@ var commands = {
    * @method check
    * @chainable
    */
-  'check': function() {
+  'check': function () {
     // first check git if needed
-    if (this.attrs.checkgit && checkGit.call(this)){
+    if (this.attrs.checkgit && checkGit.call(this)) {
       return;
     }
 
-    loadClientJson.call(this)
-      .then(loadRemoteJson.bind(this))
-      .then(loaded.bind(this));
+    loadClientJson.call(this).then(loadRemoteJson.bind(this)).then(loaded.bind(this));
 
     return this;
   },
@@ -210,28 +205,23 @@ var commands = {
    * @method download-update
    * @chainable
    */
-  'download-update': function() {
+  'download-update': function () {
     // Validation
     if (!this.jsons.client) {
-      return loadClientJson.call(this)
-        .then(loadRemoteJson.bind(this))
-        .then(commands['download-update'].bind(this));
+      return loadClientJson.call(this).then(loadRemoteJson.bind(this)).then(commands['download-update'].bind(this));
     }
 
     var self = this,
       jsoninfo = this.jsons.client['auto-updater'];
 
-    remoteDownloadUpdate.call(this, this.updateName, {
+    remoteDownloadUpdate
+      .call(this, this.updateName, {
         host: this.attrs.contenthost,
-        path: '/' + path.join(jsoninfo.repo,
-          'zip',
-          jsoninfo.branch)
+        path: '/' + path.join(jsoninfo.repo, 'zip', jsoninfo.branch),
       })
-      .then(function(existed) {
-        if (existed === true)
-          emit(self, 'update.not-installed');
-        else
-          emit(self, 'update.downloaded');
+      .then(function (existed) {
+        if (existed === true) emit(self, 'update.not-installed');
+        else emit(self, 'update.downloaded');
 
         if (self.attrs.autoupdate) {
           self.fire('extract');
@@ -247,13 +237,12 @@ var commands = {
    * @method extract
    * @chainable
    */
-  'extract': function(subfolder) {
+  'extract': function (subfolder) {
     var self = this;
-    extract.call(this, this.updateName, subfolder)
-      .then(function() {
-        emit(self, 'update.extracted');
-        emit(self, 'end');
-      });
+    extract.call(this, this.updateName, subfolder).then(function () {
+      emit(self, 'update.extracted');
+      emit(self, 'end');
+    });
     return this;
   },
   /**
@@ -261,12 +250,12 @@ var commands = {
    * @method diff-dependencies
    * @return {Array}
    */
-  'diff-dependencies': function() {
+  'diff-dependencies': function () {
     if (!this.cache.dependencies) {
       checkDependencies.call(this);
     }
     return this.cache.dependencies;
-  }
+  },
 };
 
 /**
@@ -276,7 +265,7 @@ var commands = {
  * @return {Object} Object containing only 'auto-updater', 'version' and 'dependencies'
  * @private
  */
-var parsePackageJson = function(data) {
+var parsePackageJson = function (data) {
   if (!_.isObject(data)) {
     data = JSON.parse(data);
   }
@@ -297,9 +286,8 @@ var parsePackageJson = function(data) {
  * @return {Boolean}  Has git folder
  * @private
  */
-var checkGit = function() {
+var checkGit = function () {
   if (this.cache.git === undefined) {
-
     this.cache.git = fs.existsSync('.git');
 
     if (this.cache.git === true) {
@@ -314,13 +302,12 @@ var checkGit = function() {
  * @return {Promise}
  * @private
  */
-var loadClientJson = function() {
-  var jsonPath = path.join('.', this.attrs.pathToJson,
-      'package.json'),
+var loadClientJson = function () {
+  var jsonPath = path.join('.', this.attrs.pathToJson, 'package.json'),
     self = this,
     deferred = Defer();
 
-  fs.readFile(jsonPath, 'utf-8', function(err, data) {
+  fs.readFile(jsonPath, 'utf-8', function (err, data) {
     if (err) {
       deferred.reject();
       return;
@@ -338,22 +325,20 @@ var loadClientJson = function() {
  * @return {Promise}
  * @private
  */
-var loadRemoteJson = function() {
+var loadRemoteJson = function () {
   var self = this,
     jsoninfo = self.jsons.client['auto-updater'],
     repo = jsoninfo.repo,
     branch = jsoninfo.branch,
-    jsonPath = path.join(repo,
-      branch,
-      this.attrs.pathToJson,
-      'package.json'),
+    jsonPath = path.join(repo, branch, this.attrs.pathToJson, 'package.json'),
     deferred = Defer();
 
-  remoteDownloader.call(this, {
+  remoteDownloader
+    .call(this, {
       host: this.attrs.jsonhost,
-      path: '/' + jsonPath
+      path: '/' + jsonPath,
     })
-    .then(function(data) {
+    .then(function (data) {
       self.jsons.remote = parsePackageJson.call(self, data);
       self.updateName = self.update_dest + '-' + self.jsons.remote.version + '.zip';
 
@@ -371,7 +356,7 @@ var loadRemoteJson = function() {
  * @method loaded
  * @private
  */
-var loaded = function() {
+var loaded = function () {
   var clientVersion = this.jsons.client.version,
     remoteVersion = this.jsons.remote.version;
 
@@ -394,21 +379,20 @@ var loaded = function() {
  * @return {Promise}
  * @private
  */
-var remoteDownloader = function(opc, callback) {
+var remoteDownloader = function (opc, callback) {
   if (!opc.host || !opc.path) return;
 
   var self = this,
     deferred = Defer();
 
-  var request = https.request(opc, function(res) {
-
+  var request = https.request(opc, function (res) {
     var data = '';
 
-    res.on('data', function(d) {
+    res.on('data', function (d) {
       data = data + d;
     });
 
-    res.on('end', function() {
+    res.on('end', function () {
       var error = null;
       try {
         data = JSON.parse(data);
@@ -417,17 +401,16 @@ var remoteDownloader = function(opc, callback) {
           e: e,
           response: data,
           path: opc.path,
-          host: opc.host
+          host: opc.host,
         });
         deferred.reject(e);
         return;
       }
       deferred.resolve(data);
     });
-
   });
 
-  request.on('error', function(e) {
+  request.on('error', function (e) {
     self.error('Error downloaing the remote JSON', 'download.error', e);
     deferred.reject();
   });
@@ -448,7 +431,7 @@ var remoteDownloader = function(opc, callback) {
  * @return {Promise}
  * @private
  */
-var remoteDownloadUpdate = function(name, opc) {
+var remoteDownloadUpdate = function (name, opc) {
   var self = this,
     deferred = Defer();
 
@@ -464,7 +447,7 @@ var remoteDownloadUpdate = function(name, opc) {
   else protocol = https;
 
   // download request
-  var request = protocol.get(opc, function(res) {
+  var request = protocol.get(opc, function (res) {
     // Check if the file already exists and remove it if it does
     if (fs.existsSync('_' + name)) fs.unlinkSync('_' + name);
 
@@ -479,7 +462,7 @@ var remoteDownloadUpdate = function(name, opc) {
     // Pipe any new block to the stream
     res.pipe(file);
 
-    var dataRecieve = function(chunk) {
+    var dataRecieve = function (chunk) {
       current += chunk.length;
       perc = (100.0 * (current / len)).toFixed(2);
       emit(self, 'download.progress', name, perc);
@@ -491,11 +474,11 @@ var remoteDownloadUpdate = function(name, opc) {
       res.on('data', dataRecieve);
     }
 
-    res.on('end', function() {
+    res.on('end', function () {
       file.end();
     });
 
-    file.on('finish', function() {
+    file.on('finish', function () {
       fs.renameSync('_' + name, name);
       emit(self, 'download.end', name);
 
@@ -503,7 +486,7 @@ var remoteDownloadUpdate = function(name, opc) {
     });
   });
   request.end();
-  request.on('error', function(e) {
+  request.on('error', function (e) {
     deferred.reject();
     emit(self, 'download.error', e);
   });
@@ -512,14 +495,14 @@ var remoteDownloadUpdate = function(name, opc) {
 };
 
 /**
- * 
+ *
  * @method extract
  * @param  {String}   name      Path of zip
  * @param  {Boolean}   subfolder If subfolder. (check Adm-zip)
  * @return {Promise}
  * @private
  */
-var extract = function(name, subfolder) {
+var extract = function (name, subfolder) {
   var admzip = require('adm-zip');
 
   var zip = new admzip(name);
@@ -542,7 +525,7 @@ var extract = function(name, subfolder) {
  * @return {Boolean} If they have changed
  * @private
  */
-var checkDependencies = function() {
+var checkDependencies = function () {
   var client = this.jsons.client.dependencies,
     remote = this.jsons.remote.dependencies,
     cache = this.cache;
@@ -554,15 +537,14 @@ var checkDependencies = function() {
 
   cache.dependencies = [];
 
-  _.each(remote, function(value, key) {
+  _.each(remote, function (value, key) {
     // Check that the client has the key, or that the versions are the same
-    if (!client.hasOwnProperty(key) ||
-      value !== client[key]) {
+    if (!client.hasOwnProperty(key) || value !== client[key]) {
       // Log the diff
       cache.dependencies.push(key);
     }
   });
-  return (cache.dependencies.length > 0);
+  return cache.dependencies.length > 0;
 };
 
 module.exports = AutoUpdater;
