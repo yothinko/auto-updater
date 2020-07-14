@@ -1,8 +1,7 @@
 var fs = require('fs');
 var util = require('util');
 var path = require('path').posix;
-var http = require('http');
-var https = require('https');
+const { http, https } = require('follow-redirects');
 var EventEmitter = require('events').EventEmitter;
 
 var _ = require('underscore'),
